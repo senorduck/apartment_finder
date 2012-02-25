@@ -1,0 +1,30 @@
+#fixed_header {
+	background-color: #fff;
+	padding-top: 8px;
+	position: fixed;
+	top: 0;
+	width: 99%;
+}
+.under_fixed {
+	margin-top: 195px;
+}
+.styled_post {
+	padding: 15px;
+	background: #eee;
+}
+a.hide_link {
+	color: #ccc;
+	margin-left: 30px;
+}
+#additional_search {
+	 background-color: #eee;
+	 border: 1px solid #ccc;
+	 margin-top: 20px;
+	 padding: 10px; 
+}
+#custom_form {
+	margin-top: 10px;
+}
+#custom_form label {
+	margin-right: 8px;
+}
