@@ -1,10 +1,10 @@
-class Filters
-	postTag = "p"
-	posts = $("body").find(postTag)
-	fixedElems = ".bchead, blockquote:first"
-	bodyElems = "blockquote:eq(1)"
-	searchFields = "#searchfieldset"
+postTag = "p"
+posts = $("body").find(postTag)
+fixedElems = ".bchead, blockquote:first"
+bodyElems = "blockquote:eq(1)"
+searchFields = "#searchfieldset"
 
+class Filters
 	setDefaults: ->
 		this.format()
 		# this.attachBehaviors()
@@ -18,11 +18,23 @@ class Filters
 			{
 				element: $(posts).find("a:not(.hide_link)"),
 				attribute: {
-					name: 	"target",
-					orig: 	"_self",
+					name: 	"target"
+					orig: 	"_self"
 					custom: "_blank"
 				}
 			})
+
+		#filter out crappy ol' vintage joints
+		oldApartmentFilter = new PostFilter("No Vintage Listings", options = { phrase: ["Vintage"] })
+
+		#filter out basements
+		# basementFilter = new PostFilter("No Garden/Basement Apartments", options = )
+
+		#crazy people write in all caps
+		allCapsFilter = new PostFilter("NO ALL CAPS LISTINGS", options = { rule: (elem) -> 
+			elem.toUpperCase() == elem
+		})
+
 	
 	format: ->
 		#wrap header elements in a fixed position div
@@ -61,16 +73,58 @@ class Filter
 			else
 				this.toggleFilter(false)
 
+	cleanHTML: (dirtyPost) ->
+		dirtyString = $(dirtyPost).html()
+
+		#remove all html tags from the post to match stuff against
+		htmlRegex = /<\/?[^<>]*\/?>/gi
+		cleaned = dirtyString.replace(htmlRegex,'')
+
+		#oftentimes the actual posting comes after an initial '-' separating it from the number of bedrooms and price. we only want the part after that
+		if cleaned.indexOf("-") > -1
+			cleaned = cleaned.substring(cleaned.indexOf("-"))
+
+		cleaned
+
+	toggleFilter: (bool) =>
+		for post in @offendingPosts
+			if bool
+				$(post).fadeOut()
+			else
+				$(post).fadeIn()
 
 class AttributeFilter extends Filter
 	toggleFilter: (bool) =>
-		attributes = @options.attribute
 		if bool
-			value = attributes.custom
+			value = @options.attribute.custom
 		else
-			value = attributes.orig
-		$(@elements).attr(attributes.name, value)
+			value = @options.attribute.orig
+		$(@elements).attr(@options.attribute.name, value)
 
+class PostFilter extends Filter
+	toggleFilter: (bool) =>
+		@offendingPosts ||= []
+		if @options.phrase
+			this.scrubPhrase(bool)
+
+		if @options.rule
+			this.applyRule(bool)
+
+		super
+
+	scrubPhrase: (bool) ->
+		matchingPhrases = []
+		matchingPhrases.push phrase.toUpperCase() for phrase in @options.phrase
+		if @offendingPosts.length < 1
+			for post in posts
+				for matchingPhrase in matchingPhrases
+					@offendingPosts.push(post) if this.cleanHTML($(post).html()).toUpperCase().match(matchingPhrase)
+
+	applyRule: (bool) ->
+		if @offendingPosts.length < 1
+			for post in posts
+				cleanedPost = this.cleanHTML($(post).html())
+				@offendingPosts.push(post) if @options.rule(cleanedPost) == true
 
 setFilters = ->
 	@initialized = true
