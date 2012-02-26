@@ -28,12 +28,24 @@ class Filters
 		oldApartmentFilter = new PostFilter("No Vintage Listings", options = { phrase: ["Vintage"] })
 
 		#filter out basements
-		# basementFilter = new PostFilter("No Garden/Basement Apartments", options = )
+		basementFilter = new PostFilter("No Garden/Basement Apartments", options = { phrase: ["Garden","Basement"] })
+
+		#filter out first floor
+		firstFloorFilter = new PostFilter("No first floor apartments", options = { phrase: ["First Floor", "1st Floor"] })
 
 		#crazy people write in all caps
 		allCapsFilter = new PostFilter("NO ALL CAPS LISTINGS", options = { rule: (elem) -> 
 			elem.toUpperCase() == elem
 		})
+
+		#oneBed
+		oneBedroomFilter = new PostFilter("1 Bedroom", options = { phrase: ["1br"], match: true, checked: 'checked', trimPrice: 'none' })
+
+		#twoBed
+		twoBedroomFilter = new PostFilter("2 Bedroom", options = { phrase: ["2br"], match: true, checked: 'checked', trimPrice: 'none' })
+
+		#threeBed
+		threeBedroomFilter = new PostFilter("3 Bedroom", options = { phrase: ["3br"], match: true, checked: 'checked', trimPrice: 'none' })
 
 	
 	format: ->
@@ -60,20 +72,28 @@ class Filters
 class Filter
 	constructor: (@label, @options) ->
 		@name = @label.toLowerCase().replace /[ ]/g, ""
+		checked = @options.checked || false
 		@checkbox = $("<input type='checkbox' name='" + @name + "' id='" + @name + "' \/>")
+		@checkbox.attr("checked","checked") if checked
 		@elements = @options.element
+		@trimPrice = @options.trimPrice || false
+		@match = @options.match || false
 		this.apply()
 
 	apply: ->
 		$("#custom_form").append("<label for='" + @name + "'>" + @label + "<\/label>").append($(@checkbox))
 
+		#toggle the filter on init
+		this.toggleFilter(true) if $(@checkbox).is(':checked')
+
+		#bind to the click event of the checkbox
 		$(@checkbox).bind 'click', (event) =>
 			if $(event.target).is(':checked')
 				this.toggleFilter(true)
 			else
 				this.toggleFilter(false)
 
-	cleanHTML: (dirtyPost) ->
+	cleanHTML: (dirtyPost, trimPrice) ->
 		dirtyString = $(dirtyPost).html()
 
 		#remove all html tags from the post to match stuff against
@@ -81,7 +101,7 @@ class Filter
 		cleaned = dirtyString.replace(htmlRegex,'')
 
 		#oftentimes the actual posting comes after an initial '-' separating it from the number of bedrooms and price. we only want the part after that
-		if cleaned.indexOf("-") > -1
+		if trimPrice != "none" && cleaned.indexOf("-") > -1
 			cleaned = cleaned.substring(cleaned.indexOf("-"))
 
 		cleaned
@@ -89,9 +109,15 @@ class Filter
 	toggleFilter: (bool) =>
 		for post in @offendingPosts
 			if bool
-				$(post).fadeOut()
+				if @match
+					$(post).fadeIn()
+				else
+					$(post).fadeOut()
 			else
-				$(post).fadeIn()
+				if @match
+					$(post).fadeOut()
+				else
+					$(post).fadeIn()
 
 class AttributeFilter extends Filter
 	toggleFilter: (bool) =>
@@ -118,12 +144,12 @@ class PostFilter extends Filter
 		if @offendingPosts.length < 1
 			for post in posts
 				for matchingPhrase in matchingPhrases
-					@offendingPosts.push(post) if this.cleanHTML($(post).html()).toUpperCase().match(matchingPhrase)
+					@offendingPosts.push(post) if this.cleanHTML($(post).html(), @trimPrice).toUpperCase().match(matchingPhrase)
 
 	applyRule: (bool) ->
 		if @offendingPosts.length < 1
 			for post in posts
-				cleanedPost = this.cleanHTML($(post).html())
+				cleanedPost = this.cleanHTML($(post).html(), @trimPrice)
 				@offendingPosts.push(post) if @options.rule(cleanedPost) == true
 
 setFilters = ->
