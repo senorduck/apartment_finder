@@ -38,6 +38,10 @@ class Filters
 			elem.toUpperCase() == elem
 		})
 
+		#move-in fees don't make any sense. at all. they don't send people to help you move or anything. it's like a deposit, only instead of getting your money back, you don't
+		moveInFeeFilter = new PostFilter("No Move-in Fees, &quot;$0 Security Deposit&quot; crap",
+			options = { phrase: [ "0 security deposit", "move-in fee", "move in fee", "no security deposit" ] })
+
 		#oneBed
 		oneBedroomFilter = new PostFilter("1 Bedroom", options = { phrase: ["1br"], match: true, checked: 'checked', trimPrice: 'none' })
 
@@ -81,7 +85,7 @@ class Filter
 		this.apply()
 
 	apply: ->
-		$("#custom_form").append("<label for='" + @name + "'>" + @label + "<\/label>").append($(@checkbox))
+		$("#custom_form").append($(@checkbox)).append("<label for='" + @name + "'>" + @label + "<\/label>")
 
 		#toggle the filter on init
 		this.toggleFilter(true) if $(@checkbox).is(':checked')
@@ -108,16 +112,10 @@ class Filter
 
 	toggleFilter: (bool) =>
 		for post in @offendingPosts
-			if bool
-				if @match
+			if (bool && @match) || (!bool && !@match)
 					$(post).fadeIn()
-				else
-					$(post).fadeOut()
 			else
-				if @match
-					$(post).fadeOut()
-				else
-					$(post).fadeIn()
+				$(post).fadeOut()
 
 class AttributeFilter extends Filter
 	toggleFilter: (bool) =>
@@ -164,7 +162,7 @@ initialize = ->
 	styles = document.createElement("link")
 	styles.type = "text/css"
 	styles.rel = "stylesheet"
-	styles.href = "http://localhost/apartment_finder/css/benslist.css"
+	styles.href = "http://localhost/css/benslist.css"
 	document.getElementsByTagName("head")[0].appendChild(styles)
 
 	# if jquery is not already defined on the page, insert it into the page

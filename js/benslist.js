@@ -1,26 +1,29 @@
 (function() {
-  var AttributeFilter, Filter, Filters, PostFilter, bodyElems, fixedElems, initialize, postTag, posts, searchFields, setFilters;
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; }, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
-    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor;
-    child.__super__ = parent.prototype;
-    if(typeof parent.extended == "function") parent.extended.call(parent, child);
-    return child;
-  };
+  var AttributeFilter, Filter, Filters, PostFilter, bodyElems, fixedElems, initialize, postTag, posts, searchFields, setFilters,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+
   postTag = "p";
+
   posts = $("body").find(postTag);
+
   fixedElems = ".bchead, blockquote:first";
+
   bodyElems = "blockquote:eq(1)";
+
   searchFields = "#searchfieldset";
+
   Filters = (function() {
+
     function Filters() {}
+
     Filters.prototype.setDefaults = function() {
       return this.format();
     };
+
     Filters.prototype.defineFilters = function() {
-      var allCapsFilter, basementFilter, firstFloorFilter, newTabFilter, oldApartmentFilter, oneBedroomFilter, options, threeBedroomFilter, twoBedroomFilter;
+      var allCapsFilter, basementFilter, firstFloorFilter, moveInFeeFilter, newTabFilter, oldApartmentFilter, oneBedroomFilter, options, threeBedroomFilter, twoBedroomFilter;
       $(searchFields).append("<div id='additional_search'>Custom Filters<div id='custom_form'></div></div>");
       newTabFilter = new AttributeFilter("Links open in new tab", options = {
         element: $(posts).find("a:not(.hide_link)"),
@@ -44,6 +47,9 @@
           return elem.toUpperCase() === elem;
         }
       });
+      moveInFeeFilter = new PostFilter("No Move-in Fees, &quot;$0 Security Deposit&quot; crap", options = {
+        phrase: ["0 security deposit", "move-in fee", "move in fee", "no security deposit"]
+      });
       oneBedroomFilter = new PostFilter("1 Bedroom", options = {
         phrase: ["1br"],
         match: true,
@@ -63,15 +69,20 @@
         trimPrice: 'none'
       });
     };
+
     Filters.prototype.format = function() {
       $(fixedElems).wrapAll("<div id='fixed_header'></div>");
       $(bodyElems).addClass("under_fixed");
       posts.addClass("styled_post");
       return this.defineFilters();
     };
+
     return Filters;
+
   })();
+
   Filter = (function() {
+
     function Filter(label, options) {
       var checked;
       this.label = label;
@@ -80,27 +91,26 @@
       this.name = this.label.toLowerCase().replace(/[ ]/g, "");
       checked = this.options.checked || false;
       this.checkbox = $("<input type='checkbox' name='" + this.name + "' id='" + this.name + "' \/>");
-      if (checked) {
-        this.checkbox.attr("checked", "checked");
-      }
+      if (checked) this.checkbox.attr("checked", "checked");
       this.elements = this.options.element;
       this.trimPrice = this.options.trimPrice || false;
       this.match = this.options.match || false;
       this.apply();
     }
+
     Filter.prototype.apply = function() {
-      $("#custom_form").append("<label for='" + this.name + "'>" + this.label + "<\/label>").append($(this.checkbox));
-      if ($(this.checkbox).is(':checked')) {
-        this.toggleFilter(true);
-      }
-      return $(this.checkbox).bind('click', __bind(function(event) {
+      var _this = this;
+      $("#custom_form").append($(this.checkbox)).append("<label for='" + this.name + "'>" + this.label + "<\/label>");
+      if ($(this.checkbox).is(':checked')) this.toggleFilter(true);
+      return $(this.checkbox).bind('click', function(event) {
         if ($(event.target).is(':checked')) {
-          return this.toggleFilter(true);
+          return _this.toggleFilter(true);
         } else {
-          return this.toggleFilter(false);
+          return _this.toggleFilter(false);
         }
-      }, this));
+      });
     };
+
     Filter.prototype.cleanHTML = function(dirtyPost, trimPrice) {
       var cleaned, dirtyString, htmlRegex;
       dirtyString = $(dirtyPost).html();
@@ -111,24 +121,35 @@
       }
       return cleaned;
     };
+
     Filter.prototype.toggleFilter = function(bool) {
       var post, _i, _len, _ref, _results;
       _ref = this.offendingPosts;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         post = _ref[_i];
-        _results.push(bool ? this.match ? $(post).fadeIn() : $(post).fadeOut() : this.match ? $(post).fadeOut() : $(post).fadeIn());
+        if ((bool && this.match) || (!bool && !this.match)) {
+          _results.push($(post).fadeIn());
+        } else {
+          _results.push($(post).fadeOut());
+        }
       }
       return _results;
     };
+
     return Filter;
+
   })();
-  AttributeFilter = (function() {
-    __extends(AttributeFilter, Filter);
+
+  AttributeFilter = (function(_super) {
+
+    __extends(AttributeFilter, _super);
+
     function AttributeFilter() {
       this.toggleFilter = __bind(this.toggleFilter, this);
       AttributeFilter.__super__.constructor.apply(this, arguments);
     }
+
     AttributeFilter.prototype.toggleFilter = function(bool) {
       var value;
       if (bool) {
@@ -138,24 +159,27 @@
       }
       return $(this.elements).attr(this.options.attribute.name, value);
     };
+
     return AttributeFilter;
-  })();
-  PostFilter = (function() {
-    __extends(PostFilter, Filter);
+
+  })(Filter);
+
+  PostFilter = (function(_super) {
+
+    __extends(PostFilter, _super);
+
     function PostFilter() {
       this.toggleFilter = __bind(this.toggleFilter, this);
       PostFilter.__super__.constructor.apply(this, arguments);
     }
+
     PostFilter.prototype.toggleFilter = function(bool) {
       this.offendingPosts || (this.offendingPosts = []);
-      if (this.options.phrase) {
-        this.scrubPhrase(bool);
-      }
-      if (this.options.rule) {
-        this.applyRule(bool);
-      }
+      if (this.options.phrase) this.scrubPhrase(bool);
+      if (this.options.rule) this.applyRule(bool);
       return PostFilter.__super__.toggleFilter.apply(this, arguments);
     };
+
     PostFilter.prototype.scrubPhrase = function(bool) {
       var matchingPhrase, matchingPhrases, phrase, post, _i, _j, _len, _len2, _ref, _results;
       matchingPhrases = [];
@@ -173,7 +197,11 @@
             _results2 = [];
             for (_k = 0, _len3 = matchingPhrases.length; _k < _len3; _k++) {
               matchingPhrase = matchingPhrases[_k];
-              _results2.push(this.cleanHTML($(post).html(), this.trimPrice).toUpperCase().match(matchingPhrase) ? this.offendingPosts.push(post) : void 0);
+              if (this.cleanHTML($(post).html(), this.trimPrice).toUpperCase().match(matchingPhrase)) {
+                _results2.push(this.offendingPosts.push(post));
+              } else {
+                _results2.push(void 0);
+              }
             }
             return _results2;
           }).call(this));
@@ -181,6 +209,7 @@
         return _results;
       }
     };
+
     PostFilter.prototype.applyRule = function(bool) {
       var cleanedPost, post, _i, _len, _results;
       if (this.offendingPosts.length < 1) {
@@ -188,28 +217,35 @@
         for (_i = 0, _len = posts.length; _i < _len; _i++) {
           post = posts[_i];
           cleanedPost = this.cleanHTML($(post).html(), this.trimPrice);
-          _results.push(this.options.rule(cleanedPost) === true ? this.offendingPosts.push(post) : void 0);
+          if (this.options.rule(cleanedPost) === true) {
+            _results.push(this.offendingPosts.push(post));
+          } else {
+            _results.push(void 0);
+          }
         }
         return _results;
       }
     };
+
     return PostFilter;
-  })();
+
+  })(Filter);
+
   setFilters = function() {
     var pageFilters;
     this.initialized = true;
     pageFilters = new Filters();
     return pageFilters.setDefaults();
   };
+
   initialize = function() {
-    var script, styles;
-    if (this.initialized) {
-      return;
-    }
+    var script, styles,
+      _this = this;
+    if (this.initialized) return;
     styles = document.createElement("link");
     styles.type = "text/css";
     styles.rel = "stylesheet";
-    styles.href = "http://localhost/apartment_finder/css/benslist.css";
+    styles.href = "http://localhost/css/benslist.css";
     document.getElementsByTagName("head")[0].appendChild(styles);
     if (document.location.href.indexOf("localhost") < 0 && document.location.href.indexOf("craigslist.org") < 0) {
       alert("For use with Craigslist apartment search pages.");
@@ -219,14 +255,18 @@
       script = document.createElement("script");
       script.src = "http://ajax.googleapis.com/ajax/libs/jquery/" + this.version + "/jquery.min.js";
       document.getElementsByTagName("head")[0].appendChild(script);
-      return script.onload = __bind(function() {
+      return script.onload = function() {
         return setFilters();
-      }, this);
+      };
     } else {
       return setFilters();
     }
   };
+
   this.version = "1.7.1";
+
   this.initialized || (this.initialized = false);
+
   initialize();
+
 }).call(this);
