@@ -3,11 +3,34 @@ posts = $("body").find(postTag)
 fixedElems = ".bchead, blockquote:first"
 bodyElems = "blockquote:eq(1)"
 searchFields = "#searchfieldset"
+truncateLength = 30
+reservedChars = [" ", ":", "/", "?", "#", "[", "]", "@", "!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="]
+
+cleanHTML = (dirtyPost, trimPrice) =>
+	dirtyString = $(dirtyPost).html()
+
+	#remove all html tags from the post to match stuff against
+	htmlRegex = /<\/?[^<>]*\/?>/gi
+	cleaned = dirtyString.replace(htmlRegex,'')
+
+	#oftentimes the actual posting comes after an initial '-' separating it from the number of bedrooms and price. we only want the part after that
+	if trimPrice != "none" && cleaned.indexOf("-") > -1
+		cleaned = cleaned.substring(cleaned.indexOf("-"))
+
+	cleaned
+
+cleanCharacters = (string) =>
+	string.replace(/[\:\/\?\#\[\]\@\!\$\&\'\(\)\*\+\,\;\=]/g,"")
+
+truncate = (string, length=truncateLength) =>
+	"#{string.substr(0,length)}..."
 
 class Filters
+	constructor: () ->
+
 	setDefaults: ->
 		this.format()
-		# this.attachBehaviors()
+		this.attachBehaviors()
 
 	defineFilters: ->
 		#add custom filter div to the page
@@ -40,7 +63,7 @@ class Filters
 
 		#move-in fees don't make any sense. at all. they don't send people to help you move or anything. it's like a deposit, only instead of getting your money back, you don't
 		moveInFeeFilter = new PostFilter("No Move-in Fees, &quot;$0 Security Deposit&quot; crap",
-			options = { phrase: [ "0 security deposit", "move-in fee", "move in fee", "no security deposit" ] })
+			options = { phrase: [ "0 security deposit", "move-in fee", "move in fee", "no security deposit", "0 deposit", "no deposit" ] })
 
 		#oneBed
 		oneBedroomFilter = new PostFilter("1 Bedroom", options = { phrase: ["1br"], match: true, checked: 'checked', trimPrice: 'none' })
@@ -63,15 +86,19 @@ class Filters
 		posts.addClass("styled_post")
 
 		#add hide link to posts
-		# posts.append("<a href='#' class='hide_link'>Hide All</a>")
+		posts.append("<a href='#' class='hide_link'>Hide All</a>")
 
 		#add Filters div and initialize filters
 		this.defineFilters()
 
-	# attachBehaviors: ->
-		# hideLinks = $("a.hide_link")
-		# hideLinks.bind 'click', (event) ->
-		# 	$(this).parent(postTag).hide()
+	createFilter: (post) ->
+		new HiddenPostFilter(options = { phrase: [cleanHTML($(post).html())], checked: 'checked' }).toggleFilter(true)
+
+	attachBehaviors: ->
+		hideLinks = $("a.hide_link")
+		hideLinks.bind 'click', (event) =>
+			event.preventDefault()
+			this.createFilter($(event.target).parent(postTag))
 
 class Filter
 	constructor: (@label, @options) ->
@@ -96,19 +123,6 @@ class Filter
 				this.toggleFilter(true)
 			else
 				this.toggleFilter(false)
-
-	cleanHTML: (dirtyPost, trimPrice) ->
-		dirtyString = $(dirtyPost).html()
-
-		#remove all html tags from the post to match stuff against
-		htmlRegex = /<\/?[^<>]*\/?>/gi
-		cleaned = dirtyString.replace(htmlRegex,'')
-
-		#oftentimes the actual posting comes after an initial '-' separating it from the number of bedrooms and price. we only want the part after that
-		if trimPrice != "none" && cleaned.indexOf("-") > -1
-			cleaned = cleaned.substring(cleaned.indexOf("-"))
-
-		cleaned
 
 	toggleFilter: (bool) =>
 		for post in @offendingPosts
@@ -138,17 +152,24 @@ class PostFilter extends Filter
 
 	scrubPhrase: (bool) ->
 		matchingPhrases = []
-		matchingPhrases.push phrase.toUpperCase() for phrase in @options.phrase
+		matchingPhrases.push cleanCharacters(phrase.toUpperCase()) for phrase in @options.phrase
 		if @offendingPosts.length < 1
 			for post in posts
 				for matchingPhrase in matchingPhrases
-					@offendingPosts.push(post) if this.cleanHTML($(post).html(), @trimPrice).toUpperCase().match(matchingPhrase)
+					cleanPost = cleanCharacters(cleanHTML($(post).html(), @trimPrice).toUpperCase())
+					@offendingPosts.push(post) if cleanPost.match(matchingPhrase)
 
 	applyRule: (bool) ->
 		if @offendingPosts.length < 1
 			for post in posts
-				cleanedPost = this.cleanHTML($(post).html(), @trimPrice)
+				cleanedPost = cleanHTML($(post).html(), @trimPrice)
 				@offendingPosts.push(post) if @options.rule(cleanedPost) == true
+
+class HiddenPostFilter extends PostFilter
+	constructor: (@options) ->
+		@name = ""
+
+	apply: ->
 
 setFilters = ->
 	@initialized = true

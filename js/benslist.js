@@ -1,5 +1,6 @@
 (function() {
-  var AttributeFilter, Filter, Filters, PostFilter, bodyElems, fixedElems, initialize, postTag, posts, searchFields, setFilters,
+  var AttributeFilter, Filter, Filters, HiddenPostFilter, PostFilter, bodyElems, cleanCharacters, cleanHTML, fixedElems, initialize, postTag, posts, reservedChars, searchFields, setFilters, truncate, truncateLength,
+    _this = this,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
@@ -14,12 +15,37 @@
 
   searchFields = "#searchfieldset";
 
+  truncateLength = 30;
+
+  reservedChars = [" ", ":", "/", "?", "#", "[", "]", "@", "!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="];
+
+  cleanHTML = function(dirtyPost, trimPrice) {
+    var cleaned, dirtyString, htmlRegex;
+    dirtyString = $(dirtyPost).html();
+    htmlRegex = /<\/?[^<>]*\/?>/gi;
+    cleaned = dirtyString.replace(htmlRegex, '');
+    if (trimPrice !== "none" && cleaned.indexOf("-") > -1) {
+      cleaned = cleaned.substring(cleaned.indexOf("-"));
+    }
+    return cleaned;
+  };
+
+  cleanCharacters = function(string) {
+    return string.replace(/[\:\/\?\#\[\]\@\!\$\&\'\(\)\*\+\,\;\=]/g, "");
+  };
+
+  truncate = function(string, length) {
+    if (length == null) length = truncateLength;
+    return "" + (string.substr(0, length)) + "...";
+  };
+
   Filters = (function() {
 
     function Filters() {}
 
     Filters.prototype.setDefaults = function() {
-      return this.format();
+      this.format();
+      return this.attachBehaviors();
     };
 
     Filters.prototype.defineFilters = function() {
@@ -48,7 +74,7 @@
         }
       });
       moveInFeeFilter = new PostFilter("No Move-in Fees, &quot;$0 Security Deposit&quot; crap", options = {
-        phrase: ["0 security deposit", "move-in fee", "move in fee", "no security deposit"]
+        phrase: ["0 security deposit", "move-in fee", "move in fee", "no security deposit", "0 deposit", "no deposit"]
       });
       oneBedroomFilter = new PostFilter("1 Bedroom", options = {
         phrase: ["1br"],
@@ -74,7 +100,26 @@
       $(fixedElems).wrapAll("<div id='fixed_header'></div>");
       $(bodyElems).addClass("under_fixed");
       posts.addClass("styled_post");
+      posts.append("<a href='#' class='hide_link'>Hide All</a>");
       return this.defineFilters();
+    };
+
+    Filters.prototype.createFilter = function(post) {
+      var options;
+      return new HiddenPostFilter(options = {
+        phrase: [cleanHTML($(post).html())],
+        checked: 'checked'
+      }).toggleFilter(true);
+    };
+
+    Filters.prototype.attachBehaviors = function() {
+      var hideLinks,
+        _this = this;
+      hideLinks = $("a.hide_link");
+      return hideLinks.bind('click', function(event) {
+        event.preventDefault();
+        return _this.createFilter($(event.target).parent(postTag));
+      });
     };
 
     return Filters;
@@ -109,17 +154,6 @@
           return _this.toggleFilter(false);
         }
       });
-    };
-
-    Filter.prototype.cleanHTML = function(dirtyPost, trimPrice) {
-      var cleaned, dirtyString, htmlRegex;
-      dirtyString = $(dirtyPost).html();
-      htmlRegex = /<\/?[^<>]*\/?>/gi;
-      cleaned = dirtyString.replace(htmlRegex, '');
-      if (trimPrice !== "none" && cleaned.indexOf("-") > -1) {
-        cleaned = cleaned.substring(cleaned.indexOf("-"));
-      }
-      return cleaned;
     };
 
     Filter.prototype.toggleFilter = function(bool) {
@@ -181,12 +215,12 @@
     };
 
     PostFilter.prototype.scrubPhrase = function(bool) {
-      var matchingPhrase, matchingPhrases, phrase, post, _i, _j, _len, _len2, _ref, _results;
+      var cleanPost, matchingPhrase, matchingPhrases, phrase, post, _i, _j, _len, _len2, _ref, _results;
       matchingPhrases = [];
       _ref = this.options.phrase;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         phrase = _ref[_i];
-        matchingPhrases.push(phrase.toUpperCase());
+        matchingPhrases.push(cleanCharacters(phrase.toUpperCase()));
       }
       if (this.offendingPosts.length < 1) {
         _results = [];
@@ -197,7 +231,8 @@
             _results2 = [];
             for (_k = 0, _len3 = matchingPhrases.length; _k < _len3; _k++) {
               matchingPhrase = matchingPhrases[_k];
-              if (this.cleanHTML($(post).html(), this.trimPrice).toUpperCase().match(matchingPhrase)) {
+              cleanPost = cleanCharacters(cleanHTML($(post).html(), this.trimPrice).toUpperCase());
+              if (cleanPost.match(matchingPhrase)) {
                 _results2.push(this.offendingPosts.push(post));
               } else {
                 _results2.push(void 0);
@@ -216,7 +251,7 @@
         _results = [];
         for (_i = 0, _len = posts.length; _i < _len; _i++) {
           post = posts[_i];
-          cleanedPost = this.cleanHTML($(post).html(), this.trimPrice);
+          cleanedPost = cleanHTML($(post).html(), this.trimPrice);
           if (this.options.rule(cleanedPost) === true) {
             _results.push(this.offendingPosts.push(post));
           } else {
@@ -230,6 +265,21 @@
     return PostFilter;
 
   })(Filter);
+
+  HiddenPostFilter = (function(_super) {
+
+    __extends(HiddenPostFilter, _super);
+
+    function HiddenPostFilter(options) {
+      this.options = options;
+      this.name = "";
+    }
+
+    HiddenPostFilter.prototype.apply = function() {};
+
+    return HiddenPostFilter;
+
+  })(PostFilter);
 
   setFilters = function() {
     var pageFilters;
